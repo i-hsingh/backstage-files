@@ -1,61 +1,452 @@
 ---
+# SYSTEM (Allowed!)
 apiVersion: backstage.io/v1alpha1
-kind: Domain
+kind: System
 metadata:
-  name: human-resources
-  description: Human Resources domain - Employee lifecycle, payroll, and talent management
+  name: hcm-system
+  description: Human Capital Management System - Complete employee lifecycle management platform
   tags:
     - hr
-    - people-operations
+    - payroll
+    - talent-management
+    - employee-management
+  links:
+    - url: https://hcm.yourcompany.com
+      title: HCM Portal
+      icon: dashboard
+    - url: https://wiki.yourcompany.com/hcm
+      title: Documentation
+      icon: docs
 spec:
-  owner: hr-leadership-team
+  owner: hr-platform-team
+  domain: human-resources
+
+---
+# APPLICATION COMPONENTS
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: hcm-web-app
+  description: HCM Web Application - Frontend for employee self-service and HR management
+  tags:
+    - react
+    - typescript
+    - frontend
+  annotations:
+    github.com/project-slug: i-hsingh/hcm-web-app
+    sonarqube.org/project-key: hcm-web-app
+spec:
+  type: website
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  dependsOn:
+    - component:default/hcm-api-service
+    - component:default/hcm-auth-service
 
 ---
 apiVersion: backstage.io/v1alpha1
-kind: Group
+kind: Component
 metadata:
-  name: hr-platform-team
-  description: Team responsible for HCM platform development and maintenance
+  name: hcm-api-service
+  description: HCM API Service - Core business logic and REST API
+  tags:
+    - java
+    - spring-boot
+    - microservice
+    - api
+  annotations:
+    github.com/project-slug: i-hsingh/hcm-api-service
+    pagerduty.com/service-id: PXXXXXX
 spec:
-  type: team
-  children: []
+  type: service
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-postgres-db
+    - resource:default/hcm-redis-cache
+    - component:default/hcm-payroll-service
+  providesApis:
+    - hcm-rest-api
+  consumesApis:
+    - payroll-api
 
 ---
 apiVersion: backstage.io/v1alpha1
-kind: Group
+kind: Component
 metadata:
-  name: payroll-team
-  description: Team managing payroll services
+  name: hcm-auth-service
+  description: HCM Authentication Service - Identity and access management
+  tags:
+    - nodejs
+    - authentication
+    - oauth2
+    - microservice
+  annotations:
+    github.com/project-slug: i-hsingh/hcm-auth-service
 spec:
-  type: team
-  children: []
+  type: service
+  lifecycle: production
+  owner: security-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-auth-db
+    - resource:default/hcm-redis-cache
+  providesApis:
+    - hcm-auth-api
 
 ---
 apiVersion: backstage.io/v1alpha1
-kind: Group
+kind: Component
 metadata:
-  name: security-team
-  description: Security and authentication team
+  name: hcm-payroll-service
+  description: HCM Payroll Service - Payroll processing and tax calculations
+  tags:
+    - python
+    - django
+    - payroll
+    - microservice
+  annotations:
+    github.com/project-slug: i-hsingh/hcm-payroll-service
+    pagerduty.com/service-id: PYYYYYY
 spec:
-  type: team
-  children: []
+  type: service
+  lifecycle: production
+  owner: payroll-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-payroll-db
+    - resource:default/hcm-s3-documents
+  providesApis:
+    - payroll-api
 
 ---
 apiVersion: backstage.io/v1alpha1
-kind: Group
+kind: Component
 metadata:
-  name: platform-team
-  description: Platform and infrastructure team
+  name: hcm-notification-service
+  description: HCM Notification Service - Email and SMS notifications
+  tags:
+    - nodejs
+    - messaging
+    - notifications
+  annotations:
+    github.com/project-slug: i-hsingh/hcm-notification-service
 spec:
-  type: team
-  children: []
+  type: service
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-message-queue
+    - resource:default/hcm-email-service
+
+---
+# DATABASE RESOURCES
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-postgres-db
+  description: Primary PostgreSQL database for HCM core data
+  tags:
+    - postgresql
+    - database
+    - rds
+  links:
+    - url: https://console.aws.amazon.com/rds/home#database:id=hcm-prod-db
+      title: AWS RDS Console
+      icon: dashboard
+spec:
+  type: database
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-vpc
 
 ---
 apiVersion: backstage.io/v1alpha1
-kind: Group
+kind: Resource
 metadata:
-  name: hr-leadership-team
-  description: HR Leadership and strategy team
+  name: hcm-payroll-db
+  description: Dedicated PostgreSQL database for payroll data (PCI compliance)
+  tags:
+    - postgresql
+    - database
+    - pci-compliant
+    - encrypted
 spec:
-  type: team
-  children: []
+  type: database
+  lifecycle: production
+  owner: payroll-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-vpc
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-auth-db
+  description: PostgreSQL database for authentication and user credentials
+  tags:
+    - postgresql
+    - database
+    - security
+spec:
+  type: database
+  lifecycle: production
+  owner: security-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-vpc
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-redis-cache
+  description: Redis cluster for session management and caching
+  tags:
+    - redis
+    - cache
+    - elasticache
+spec:
+  type: cache
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-vpc
+
+---
+# INFRASTRUCTURE RESOURCES
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-vpc
+  description: AWS VPC for HCM system isolation
+  tags:
+    - aws
+    - vpc
+    - networking
+spec:
+  type: network
+  lifecycle: production
+  owner: platform-team
+  system: hcm-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-eks-cluster
+  description: Kubernetes cluster running HCM services
+  tags:
+    - kubernetes
+    - eks
+    - container-orchestration
+  links:
+    - url: https://console.aws.amazon.com/eks/home#/clusters/hcm-prod
+      title: EKS Console
+      icon: dashboard
+spec:
+  type: kubernetes-cluster
+  lifecycle: production
+  owner: platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-vpc
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-s3-documents
+  description: S3 bucket for employee documents and attachments
+  tags:
+    - s3
+    - storage
+    - documents
+spec:
+  type: storage
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-message-queue
+  description: SQS message queue for async processing
+  tags:
+    - sqs
+    - messaging
+    - queue
+spec:
+  type: message-queue
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-email-service
+  description: AWS SES for email delivery
+  tags:
+    - ses
+    - email
+    - smtp
+spec:
+  type: email-service
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-cdn
+  description: CloudFront CDN for static assets
+  tags:
+    - cloudfront
+    - cdn
+    - caching
+spec:
+  type: cdn
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-s3-documents
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: hcm-load-balancer
+  description: Application Load Balancer for HCM services
+  tags:
+    - alb
+    - load-balancer
+    - aws
+spec:
+  type: load-balancer
+  lifecycle: production
+  owner: platform-team
+  system: hcm-system
+  dependsOn:
+    - resource:default/hcm-vpc
+    - resource:default/hcm-eks-cluster
+
+---
+# API DEFINITIONS
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: hcm-rest-api
+  description: RESTful API for HCM operations
+  tags:
+    - rest
+    - openapi
+    - v1
+  links:
+    - url: https://api.hcm.yourcompany.com/docs
+      title: API Documentation
+      icon: docs
+spec:
+  type: openapi
+  lifecycle: production
+  owner: hr-platform-team
+  system: hcm-system
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: HCM API
+      version: 1.0.0
+      description: Human Capital Management REST API
+    paths:
+      /employees:
+        get:
+          summary: List all employees
+          responses:
+            '200':
+              description: Successful response
+      /employees/{id}:
+        get:
+          summary: Get employee details
+          parameters:
+            - name: id
+              in: path
+              required: true
+              schema:
+                type: string
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: payroll-api
+  description: Payroll processing API
+  tags:
+    - rest
+    - payroll
+    - financial
+spec:
+  type: openapi
+  lifecycle: production
+  owner: payroll-team
+  system: hcm-system
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Payroll API
+      version: 1.0.0
+      description: Payroll processing and tax calculation API
+    paths:
+      /payroll/calculate:
+        post:
+          summary: Calculate payroll
+          responses:
+            '200':
+              description: Payroll calculated
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: hcm-auth-api
+  description: Authentication and authorization API
+  tags:
+    - rest
+    - oauth2
+    - security
+spec:
+  type: openapi
+  lifecycle: production
+  owner: security-team
+  system: hcm-system
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: HCM Authentication API
+      version: 1.0.0
+      description: OAuth2 authentication and authorization
+    paths:
+      /auth/login:
+        post:
+          summary: User login
+          responses:
+            '200':
+              description: Login successful
+      /auth/token:
+        post:
+          summary: Get access token
+          responses:
+            '200':
+              description: Token issued
