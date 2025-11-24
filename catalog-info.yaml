@@ -36,7 +36,7 @@ spec:
 ---
 # 2. DATABASE RESOURCE
 apiVersion: backstage.io/v1alpha1
-kind: Resource
+kind: Component
 metadata:
   name: hcm-database
   description: PostgreSQL database for HCM data storage
@@ -55,7 +55,7 @@ spec:
 ---
 # 3. INFRASTRUCTURE RESOURCE
 apiVersion: backstage.io/v1alpha1
-kind: Resource
+kind: Component
 metadata:
   name: hcm-infrastructure
   description: AWS infrastructure (VPC, EKS, networking)
